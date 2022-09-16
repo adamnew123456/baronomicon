@@ -1,0 +1,3 @@
+* Baronomicon
+** What is this?
+*Baronomicon* is a tool for exploring and planning crafting within Barotrauma.
