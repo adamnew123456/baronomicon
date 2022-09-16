@@ -1,0 +1,22 @@
+(lang dune 3.4)
+
+(name extractor)
+
+(generate_opam_files true)
+
+(source
+ (github adamnew123456/baronomicon))
+
+(authors "Chris Marchetti <adamnew123456@gmail.com>")
+
+(maintainers "Chris Marchetti <adamnew123456@gmail.com>")
+
+(license BSD-3-Clause)
+
+(package
+ (name extractor)
+ (synopsis "Extractor for the Baronomicon")
+ (description "Ingests the XML from Barotrauma and its workshop items, and produces JSON for the Baronomicon viewer.")
+ (depends ocaml dune yojson xmlm))
+
+; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project

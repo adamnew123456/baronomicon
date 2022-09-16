@@ -1,0 +1,4 @@
+(executable
+ (public_name extractor)
+ (name main)
+ (libraries extractor xmlm yojson))
