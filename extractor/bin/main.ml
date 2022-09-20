@@ -230,6 +230,52 @@ let parse_item_file (path: string) =
         | _ -> []
       end)
 
+(* Cleanup and filtering *)
+
+module ItemSet = Set.Make(
+    struct
+      type t = string
+      let compare = String.compare
+    end)
+
+(** Builds a map of tags to the items the tag is applied to. *)
+let find_item_tags (items: item_decl list) =
+  let rec tag_map = Hashtbl.create (List.length items)
+  and add_item_tag id tag =
+    let old_list =
+      Hashtbl.find_opt tag_map tag
+      |> Option.value ~default:[] in
+    Hashtbl.replace tag_map tag (id :: old_list)
+  and add_item_tags item =
+    List.iter (add_item_tag item.id) item.tags in
+  begin
+    List.iter add_item_tags items ;
+    tag_map
+  end
+
+(** Removes all items that lack recipes and are not referenced by another recipe. *)
+let prune_items (items: item_decl list) (by_tag: (string, string list) Hashtbl.t) =
+  let rec scan_recipe_part keep part =
+    match part.item with
+    | ItemId id -> ItemSet.add id keep
+    | ItemTag tag ->
+      begin
+        match Hashtbl.find_opt by_tag tag with
+        | None -> keep
+        | Some item_ids -> ItemSet.add_seq (List.to_seq item_ids) keep
+      end
+  and scan_recipe keep recipe =
+    List.fold_left scan_recipe_part keep recipe
+  and scan_item keep item =
+    let keep = List.fold_left scan_recipe keep item.fabricate in
+    let keep = List.fold_left scan_recipe keep item.deconstruct in
+    if List.length item.fabricate > 0 || List.length item.deconstruct > 0 then
+      ItemSet.add item.id keep
+    else
+      keep in
+  let keep_items = List.fold_left scan_item ItemSet.empty items in
+  List.filter (fun item -> ItemSet.mem item.id keep_items) items
+
 let () =
   begin
     Printexc.record_backtrace true ;
@@ -237,11 +283,13 @@ let () =
       Array.to_list Sys.argv
       |> List.tl
       |> List.concat_map (readdir_recursive ".xml")
-      |> List.concat_map parse_item_file
-      |> List.filter (fun item -> List.length item.deconstruct > 0 || List.length item.fabricate > 0)
+      |> List.concat_map parse_item_file in
+    let by_tag = find_item_tags items in
+    let items_json =
+      prune_items items by_tag
       |> List.map item_decl_to_json in
     begin
-      Yojson.to_channel Out_channel.stdout (`List items) ;
+      Yojson.to_channel Out_channel.stdout (`List items_json) ;
       Out_channel.flush Out_channel.stdout
     end
   end
