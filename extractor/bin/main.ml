@@ -127,8 +127,18 @@ let recipe_part_to_json (part: recipe_part) : Yojson.t =
 let recipe_to_json (recipe: recipe) : Yojson.t =
   `List (List.map recipe_part_to_json recipe)
 
-let item_decl_to_json (item: item_decl) : Yojson.t =
+let item_decl_to_json (item_labels: (string, string) Hashtbl.t) (item_descriptions: (string, string) Hashtbl.t) (item: item_decl) : Yojson.t =
+  let label =
+    Hashtbl.find_opt item_labels item.id
+    |> Option.map (fun label -> `String label)
+    |> Option.value ~default:`Null in
+  let description =
+    Hashtbl.find_opt item_descriptions item.id
+    |> Option.map (fun name -> `String name)
+    |> Option.value ~default:`Null in
   `Assoc [("id", `String item.id);
+          ("label", label);
+          ("description", description);
           ("tags", `List (List.map (fun tag -> `String tag) item.tags));
           ("fabricate", `List (List.map recipe_to_json item.fabricate));
           ("deconstruct", `List (List.map recipe_to_json item.deconstruct))]
@@ -230,6 +240,59 @@ let parse_item_file (path: string) =
         | _ -> []
       end)
 
+let entity_name_prefix = "entityname."
+let entity_name_prefix_len = String.length entity_name_prefix
+
+let entity_desc_prefix = "entitydescription."
+let entity_desc_prefix_len = String.length entity_desc_prefix
+
+(** Parses a Text file from XML into a map from IDs to labels and descriptions. *)
+let parse_label_file (item_labels: (string, string) Hashtbl.t) (item_descriptions: (string, string) Hashtbl.t) (path: string) =
+  let rec parse_content id hashtbl stream =
+    match Xmlm.input stream with
+    | `Data content ->
+      begin
+        Hashtbl.replace hashtbl id content ;
+        ignore_subtree stream parse_texts
+      end
+    | `El_end -> parse_texts stream
+    | _ -> ignore_subtree stream parse_texts
+
+  and parse_texts stream =
+    if Xmlm.eoi stream then
+      ()
+    else
+      match Xmlm.input stream with
+      | `El_start ((_, name), _) ->
+        begin
+          let (line, col) = Xmlm.pos stream in
+            Printf.fprintf Out_channel.stderr "%s:%d:%d %s\n" path line col name ;
+          if String.starts_with ~prefix:entity_name_prefix name then
+            let id = String.sub name entity_name_prefix_len (String.length name - entity_name_prefix_len) in
+            parse_content id item_labels stream
+          else if String.starts_with ~prefix:entity_desc_prefix name then
+            let id = String.sub name entity_desc_prefix_len (String.length name - entity_desc_prefix_len) in
+            parse_content id item_descriptions stream
+          else
+            ignore_subtree stream parse_texts
+        end
+      | _ -> parse_texts stream in
+
+  In_channel.with_open_bin path (fun input ->
+      let stream = Xmlm.make_input (`Channel input) in
+      begin
+        (* Consume the DTD, these files don't have one but the parser always outputs one *)
+        Xmlm.input stream |> ignore;
+
+        match Xmlm.input stream with
+        | `El_start (("", "infotexts"), attrs) ->
+          if find_attr attrs "language" = Some "English" then
+            parse_texts stream
+          else
+            ()
+        | _ -> ()
+      end)
+
 (* Cleanup and filtering *)
 
 module ItemSet = Set.Make(
@@ -246,8 +309,10 @@ let find_item_tags (items: item_decl list) =
       Hashtbl.find_opt tag_map tag
       |> Option.value ~default:[] in
     Hashtbl.replace tag_map tag (id :: old_list)
+
   and add_item_tags item =
     List.iter (add_item_tag item.id) item.tags in
+
   begin
     List.iter add_item_tags items ;
     tag_map
@@ -264,8 +329,10 @@ let prune_items (items: item_decl list) (by_tag: (string, string list) Hashtbl.t
         | None -> keep
         | Some item_ids -> ItemSet.add_seq (List.to_seq item_ids) keep
       end
+
   and scan_recipe keep recipe =
     List.fold_left scan_recipe_part keep recipe
+
   and scan_item keep item =
     let keep = List.fold_left scan_recipe keep item.fabricate in
     let keep = List.fold_left scan_recipe keep item.deconstruct in
@@ -273,23 +340,29 @@ let prune_items (items: item_decl list) (by_tag: (string, string list) Hashtbl.t
       ItemSet.add item.id keep
     else
       keep in
+
   let keep_items = List.fold_left scan_item ItemSet.empty items in
   List.filter (fun item -> ItemSet.mem item.id keep_items) items
 
 let () =
   begin
     Printexc.record_backtrace true ;
-    let items =
+    let xml_files =
       Array.to_list Sys.argv
       |> List.tl
-      |> List.concat_map (readdir_recursive ".xml")
-      |> List.concat_map parse_item_file in
+      |> List.concat_map (readdir_recursive ".xml") in
+    let items = List.concat_map parse_item_file xml_files in
+    let item_labels = Hashtbl.create 256 in
+    let item_descriptions = Hashtbl.create 256 in
     let by_tag = find_item_tags items in
-    let items_json =
-      prune_items items by_tag
-      |> List.map item_decl_to_json in
     begin
-      Yojson.to_channel Out_channel.stdout (`List items_json) ;
-      Out_channel.flush Out_channel.stdout
+      List.iter (parse_label_file item_labels item_descriptions) xml_files ;
+      let items_json =
+        prune_items items by_tag
+        |> List.map (item_decl_to_json item_labels item_descriptions) in
+      begin
+        Yojson.to_channel Out_channel.stdout (`List items_json) ;
+        Out_channel.flush Out_channel.stdout
+      end
     end
   end
