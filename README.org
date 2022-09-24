@@ -26,5 +26,5 @@ all the items and recipes:
 ~extractor ~/.steam/steamapps/common/Barotrauma/Content ~/.steam/steamapps/workshop/content/602960 > items.json~
 
 ** Viewer
-The current version of the viewer is available at [[https://kidneybone.com/barotrauma][my site]]. If you need to run a
+The current version of the viewer is available at [[https://kidneybone.com/baronomicon][my site]]. If you need to run a
 version locally, any HTTP dev server like Python's ~http.server~ will suffice.
