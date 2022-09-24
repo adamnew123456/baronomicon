@@ -11,6 +11,9 @@ const TITLE_ELEM = document.getElementById('item-title');
 const DESC_ELEM = document.getElementById('item-description');
 const FABRICATE_LIST = document.getElementById('fabricate-list');
 const DECONSTRUCT_LIST = document.getElementById('deconstruct-list');
+const USED_BY_LIST = document.getElementById('used-by-list');
+const YIELDED_BY_LIST = document.getElementById('yield-by-list');
+
 const SEARCH_INPUT = document.getElementById('search');
 const SEARCH_LIST = document.getElementById('search-results');
 
@@ -22,6 +25,8 @@ const MODAL_ERROR = document.getElementById('upload-error');
 let ITEMS_BY_ID = {};
 let ITEMS_BY_TAG = {};
 let ITEMS_BY_KEYWORD = {};
+let ITEMS_INDIRECT_FABRICATE = {};
+let ITEMS_INDIRECT_DECONSTRUCT = {};
 
 /* Parses the contents of the item dictionary in localstorage, or prompts the user for
  * a file if there are none in localstorage.
@@ -38,9 +43,15 @@ function initItems() {
   let items = JSON.parse(localStorage.getItem('items'));
   ITEMS_BY_ID = {};
   ITEMS_BY_TAG = {};
+  ITEMS_BY_KEYWORD = {};
+  ITEMS_INDIRECT_FABRICATE = {};
+  ITEMS_INDIRECT_DECONSTRUCT = {};
 
+  // Initial pass - add the information that we can get by looking at a single item
   items.forEach(item => {
     ITEMS_BY_ID[item.id] = item;
+    ITEMS_INDIRECT_FABRICATE[item.id] = [];
+    ITEMS_INDIRECT_DECONSTRUCT[item.id] = [];
 
     item.tags.forEach(tag => {
       let tagItems = ITEMS_BY_TAG[tag] || [];
@@ -68,6 +79,47 @@ function initItems() {
     });
   });
 
+  // Second pass - now that all items are present, we can index the indirect
+  // dependencies between items
+  items.forEach(item => {
+    let allUsedByTargets = [];
+    let allYieldFromTargets = [];
+
+    item.fabricate.forEach(recipe => {
+      recipe.forEach(ingredient => {
+        let itemId = ingredient.item.id;
+        let itemTag = ingredient.item.tag;
+
+        if (itemId) {
+          allUsedByTargets.push(itemId);
+        } else {
+          ITEMS_BY_TAG[itemTag].forEach(item => allUsedByTargets.push(item.id));
+        }
+      });
+    });
+
+    item.deconstruct.forEach(recipe => {
+      recipe.forEach(ingredient => {
+        let itemId = ingredient.item.id;
+        let itemTag = ingredient.item.tag;
+
+        if (itemId) {
+          allYieldFromTargets.push(itemId);
+        } else {
+          ITEMS_BY_TAG[itemTag].forEach(item => allYieldFromTargets.push(item.id));
+        }
+      });
+    });
+
+    toSet(allUsedByTargets).forEach(id => {
+      ITEMS_INDIRECT_FABRICATE[id].push(item);
+    });
+
+    toSet(allYieldFromTargets).forEach(id => {
+      ITEMS_INDIRECT_DECONSTRUCT[id].push(item);
+    });
+  });
+
   displayItem();
 }
 
@@ -76,6 +128,8 @@ function initItems() {
 function displayItem() {
   clearChildren(FABRICATE_LIST);
   clearChildren(DECONSTRUCT_LIST);
+  clearChildren(USED_BY_LIST);
+  clearChildren(YIELDED_BY_LIST);
 
   let itemId = location.hash;
   if (itemId) itemId = itemId.substring(1);
@@ -96,6 +150,14 @@ function displayItem() {
 
   item.deconstruct.forEach(recipe => {
     DECONSTRUCT_LIST.appendChild(createRecipeNode(recipe, EMPTY_DECONSTRUCTOR));
+  });
+
+  ITEMS_INDIRECT_FABRICATE[item.id].forEach(item => {
+    USED_BY_LIST.appendChild(createSearchResultNode(item));
+  });
+
+  ITEMS_INDIRECT_DECONSTRUCT[item.id].forEach(item => {
+    YIELDED_BY_LIST.appendChild(createSearchResultNode(item));
   });
 }
 
