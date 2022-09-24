@@ -1,3 +1,23 @@
-* Baronomicon
-** What is this?
+* What is this?
 *Baronomicon* is a tool for exploring and planning crafting within Barotrauma.
+ This repo contains both the *extractor* which analyzes the XML resource files
+ of Barotrauma (and Workshop mods), and the *viewer* for exploring and searching
+ through the items and their crafting recipes.
+
+* How can I build it?
+** Extractor
+The extractor is built with [[https://dune.build/install][Dune]]. See its install page for instructions on how
+to get it and the OCaml toolchain.
+
+Once your environment is setup, navigate to the extractor directory and run
+~dune install~. This will build the extractor and install it onto your PATH.
+(You can also build using ~dune build~ and run it out of ~_build/default/bin/main.exe~).
+
+* How can I run it?
+** Extractor
+You need to run the extractor first to generate a resource file. Just provide it
+the Content directory of your Barotrauma install, along with the base directory of
+your Workshop items if you use any mods. This will write out a JSON file containing
+all the items and recipes:
+
+~extractor ~/.steam/steamapps/common/Barotrauma/Content ~/.steam/steamapps/workshop/content/602960 > items.json~
