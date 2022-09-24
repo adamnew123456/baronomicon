@@ -1,0 +1,101 @@
+/* Two column layout, search on the left and item displays on the right. */
+#main-ui {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+
+#search-column {
+    flex: 0 0 25%;
+
+    display: flex;
+    flex-direction: column;
+
+    border: 1px solid black;
+}
+
+#detail-column {
+    flex: 0 0 70%;
+
+    display: flex;
+    flex-direction: column;
+    overflow: scroll;
+}
+
+/* Search column */
+#search {
+    flex: 0 0 auto;
+    width: 100%;
+}
+
+#search-results {
+    flex: 1 0 auto;
+    height: 90%;
+    overflow-y: scroll;
+}
+
+/* Display column */
+.label {
+    flex: 0 0 auto;
+    width: 100%;
+    text-align: center;
+}
+
+.recipe-list {
+    flex: 1 1 auto;
+    width: 100%;
+}
+
+/* Modal for performing uploads */
+#file-prompt {
+    display: none;
+    z-index: 999;
+    background: white;
+    position: absolute;
+    top: 5px;
+    bottom: 5px;
+    left: 5px;
+    right: 5px;
+
+    text-align: center;
+}
+
+#upload-file {
+    display: block;
+    width: 100%;
+}
+
+#upload-button {
+    display: block;
+    width: 100%;
+}
+
+#upload-error {
+    color: red;
+    font-weight: bold;
+}
+
+/* Search results */
+.search-result-entry {
+    overflow: hidden;
+}
+
+.search-result-entry a {
+    display: block;
+}
+
+/* Recipe entries */
+.recipe-entry {
+    border: 1px solid black;
+    margin-top: 5px;
+}
+
+.ingredient-container {
+    display: block;
+}
