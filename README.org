@@ -13,6 +13,9 @@ Once your environment is setup, navigate to the extractor directory and run
 ~dune install~. This will build the extractor and install it onto your PATH.
 (You can also build using ~dune build~ and run it out of ~_build/default/bin/main.exe~).
 
+** Viewer
+No build step required! It's just plain JS, CSS and HTML.
+
 * How can I run it?
 ** Extractor
 You need to run the extractor first to generate a resource file. Just provide it
@@ -21,3 +24,7 @@ your Workshop items if you use any mods. This will write out a JSON file contain
 all the items and recipes:
 
 ~extractor ~/.steam/steamapps/common/Barotrauma/Content ~/.steam/steamapps/workshop/content/602960 > items.json~
+
+** Viewer
+The current version of the viewer is available at [[https://kidneybone.com/barotrauma][my site]]. If you need to run a
+version locally, any HTTP dev server like Python's ~http.server~ will suffice.
