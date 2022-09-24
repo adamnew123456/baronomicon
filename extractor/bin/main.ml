@@ -344,6 +344,33 @@ let prune_items (items: item_decl list) (by_tag: (string, string list) Hashtbl.t
   let keep_items = List.fold_left scan_item ItemSet.empty items in
   List.filter (fun item -> ItemSet.mem item.id keep_items) items
 
+(** Combines multiple items in a recipe that are all the same *)
+let compact_recipe (recipe: recipe) =
+  let rec is_part_same a b =
+    a.item = b.item
+    && a.min_condition = b.min_condition
+    && a.max_condition = b.max_condition
+
+  and combine_same_parts parts =
+    let first = List.hd parts in
+    let rest = List.tl parts in
+    {first with amount=List.fold_left (fun amount item -> amount + item.amount) first.amount rest}
+
+  and compact_part remaining result =
+    match remaining with
+    | [] -> result
+    | hd :: rest ->
+      let (matching_hd, others) = List.partition (is_part_same hd) rest in
+      let new_hd = combine_same_parts (hd :: matching_hd) in
+      compact_part others (new_hd :: result) in
+
+  compact_part recipe []
+
+(** Compacts all the recipes for an item *)
+let compact_item_recipes (item: item_decl) =
+  {item with fabricate=List.map compact_recipe item.fabricate;
+             deconstruct=List.map compact_recipe item.deconstruct}
+
 let () =
   begin
     Printexc.record_backtrace true ;
@@ -351,7 +378,9 @@ let () =
       Array.to_list Sys.argv
       |> List.tl
       |> List.concat_map (readdir_recursive ".xml") in
-    let items = List.concat_map parse_item_file xml_files in
+    let items =
+      List.concat_map parse_item_file xml_files
+      |> List.map compact_item_recipes in
     let item_labels = Hashtbl.create 256 in
     let item_descriptions = Hashtbl.create 256 in
     let by_tag = find_item_tags items in
