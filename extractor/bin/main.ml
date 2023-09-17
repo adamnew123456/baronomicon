@@ -157,13 +157,9 @@ let parse_item_file (path: string) =
       match find_attr attrs "amount" with
       | Some amount_str -> int_of_string amount_str
       | None -> 1 in
-    let use_condition = find_attr attrs "usecondition" = Some "false" in
-    if use_condition then
-      {item; amount; min_condition=None; max_condition=None}
-    else
-      let min_condition = find_attr attrs "mincondition" |> Option.map float_of_string in
-      let max_condition = find_attr attrs "maxcondition" |> Option.map float_of_string in
-      {item; amount; min_condition; max_condition}
+    let min_condition = find_attr attrs "mincondition" |> Option.map float_of_string in
+    let max_condition = find_attr attrs "maxcondition" |> Option.map float_of_string in
+    {item; amount; min_condition; max_condition}
 
   and parse_fabricate items item_builder fab_list stream =
     match Xmlm.input stream with
