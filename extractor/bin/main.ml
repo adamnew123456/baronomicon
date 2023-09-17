@@ -168,7 +168,11 @@ let parse_item_file (path: string) =
   and parse_fabricate items item_builder fab_list stream =
     match Xmlm.input stream with
     | `El_start ((_, "RequiredItem"), attrs) ->
-      let updated_fab_list = build_recipe_part attrs :: fab_list in
+      let updated_fab_list =
+        try
+          build_recipe_part attrs :: fab_list
+        with
+        | Not_found -> fab_list in
       ignore_subtree stream (parse_fabricate items item_builder updated_fab_list) (* Throw away the end element *)
 
     | `El_start _ -> ignore_subtree stream (parse_fabricate items item_builder fab_list)
@@ -183,7 +187,11 @@ let parse_item_file (path: string) =
   and parse_deconstruct items item_builder decon_list stream =
     match Xmlm.input stream with
     | `El_start ((_, "Item"), attrs) ->
-      let updated_decon_list = build_recipe_part attrs :: decon_list in
+      let updated_decon_list =
+          try
+            build_recipe_part attrs :: decon_list
+          with
+          | Not_found -> decon_list in
       ignore_subtree stream (parse_deconstruct items item_builder updated_decon_list)
 
     | `El_start _ ->
